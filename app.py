@@ -392,12 +392,32 @@ elif view_mode == "🧑‍💼 Agent Performance":
     fig.update_layout(yaxis=dict(categoryorder='total ascending' if ascending else 'total descending'))
     st.plotly_chart(fig, use_container_width=True)
 
-    # Sort then format table
-    st.markdown("### 📄 Agent Performance Table")
-    # Sort numerically before formatting
+# Sorting controls
+st.markdown("### 📊 Top Agents by Selected Metric")
+metric_options = ["Closing Ratio", "Revenue", "Lead Spend", "Profit", "Agent Profitability"]
+selected_metric = st.selectbox("Sort by", metric_options, index=4)
+sort_order = st.radio("Sort Order", ["Descending", "Ascending"], horizontal=True)
+ascending = sort_order == "Ascending"
+
+# Sort numerically first
 sorted_df = grouped.sort_values(by=selected_metric, ascending=ascending).copy()
 
-# Create display version (only for visual output)
+# Bar Chart: Top 5
+top5 = sorted_df.head(5)
+fig = px.bar(
+    top5,
+    x=selected_metric,
+    y="Agent Name",
+    orientation="h",
+    title=f"Top 5 Agents by {selected_metric}",
+    labels={"Agent Name": "Agent"},
+    color="Agency"
+)
+fig.update_layout(yaxis=dict(categoryorder='total ascending' if ascending else 'total descending'))
+st.plotly_chart(fig, use_container_width=True)
+
+# Format for table display
+st.markdown("### 📄 Agent Performance Table")
 display_df = sorted_df.copy()
 display_df["Revenue"] = display_df["Revenue"].map("${:,.2f}".format)
 display_df["Profit"] = display_df["Profit"].map("${:,.2f}".format)
@@ -406,4 +426,3 @@ display_df["Agent Profitability"] = display_df["Agent Profitability"].map("${:,.
 display_df["Closing Ratio"] = display_df["Closing Ratio"].map("{:.2f}%".format)
 
 st.dataframe(display_df, use_container_width=True)
-
