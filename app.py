@@ -31,7 +31,7 @@ if not st.session_state.authenticated:
 # --------------------------------------------------
 @st.cache_data(ttl=3600)
 def connect_to_google_sheets():
-    creds = st.secrets["gcp_service_account"]
+    creds = dict["gcp_service_account"]
     tmp = tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False)
     json.dump(creds, tmp)
     tmp.flush()
