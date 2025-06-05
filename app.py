@@ -394,11 +394,16 @@ elif view_mode == "🧑‍💼 Agent Performance":
 
     # Sort then format table
     st.markdown("### 📄 Agent Performance Table")
-    display_df = grouped.sort_values(by=selected_metric, ascending=ascending).copy()
-    display_df["Revenue"] = display_df["Revenue"].map("${:,.2f}".format)
-    display_df["Profit"] = display_df["Profit"].map("${:,.2f}".format)
-    display_df["Lead Spend"] = display_df["Lead Spend"].map("${:,.2f}".format)
-    display_df["Agent Profitability"] = display_df["Agent Profitability"].map("${:,.2f}".format)
-    display_df["Closing Ratio"] = display_df["Closing Ratio"].map("{:.2f}%".format)
+    # Sort numerically before formatting
+sorted_df = grouped.sort_values(by=selected_metric, ascending=ascending).copy()
 
-    st.dataframe(display_df, use_container_width=True)
+# Create display version (only for visual output)
+display_df = sorted_df.copy()
+display_df["Revenue"] = display_df["Revenue"].map("${:,.2f}".format)
+display_df["Profit"] = display_df["Profit"].map("${:,.2f}".format)
+display_df["Lead Spend"] = display_df["Lead Spend"].map("${:,.2f}".format)
+display_df["Agent Profitability"] = display_df["Agent Profitability"].map("${:,.2f}".format)
+display_df["Closing Ratio"] = display_df["Closing Ratio"].map("{:.2f}%".format)
+
+st.dataframe(display_df, use_container_width=True)
+
