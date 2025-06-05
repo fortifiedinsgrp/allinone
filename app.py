@@ -321,13 +321,12 @@ elif view_mode == "🧑‍💼 Agent Performance":
         ~df_agents["Agency"].str.strip().str.lower().isin(["no agency found", "termed ee"])
     ]
     df_agents = clean_numeric(df_agents, [
-        "Revenue", "Profit", "Lead Spend", "Closing Ratio", "Agent Profitability"
+        "Revenue", "Lead Spend", "Closing Ratio"
     ])
 
     with st.sidebar:
         st.header("🎯 Agent Filters")
 
-        # Date range selection
         date_mode = st.radio("Date Range Mode", ["Last 7 Days", "Last 14 Days", "Last 30 Days", "Last 90 Days", "Custom"])
         if date_mode == "Custom":
             start_date = st.date_input("Start Date", value=datetime.now().date() - timedelta(days=7))
@@ -348,19 +347,20 @@ elif view_mode == "🧑‍💼 Agent Performance":
         if selected_agents:
             df_agents = df_agents[df_agents["Agent Name"].isin(selected_agents)]
 
-    # Group and aggregate
+    # SUM Revenue and Lead Spend, then compute Profit and Profitability
     grouped = df_agents.groupby(["Agent Name", "Agency"]).agg({
         "Revenue": "sum",
-        "Profit": "sum",
         "Lead Spend": "sum",
-        "Closing Ratio": "mean",
-        "Agent Profitability": "sum"
+        "Closing Ratio": "mean"
     }).reset_index()
 
-    # KPI Metrics
+    grouped["Profit"] = grouped["Revenue"] - grouped["Lead Spend"]
+    grouped["Agent Profitability"] = grouped["Profit"]  # You can change if it's more specific
+
+    # KPIs
     total_revenue = grouped["Revenue"].sum()
-    total_profit = grouped["Profit"].sum()
     total_lead_spend = grouped["Lead Spend"].sum()
+    total_profit = grouped["Profit"].sum()
     avg_closing_ratio = grouped["Closing Ratio"].mean()
     total_agent_profitability = grouped["Agent Profitability"].sum()
 
@@ -380,7 +380,7 @@ elif view_mode == "🧑‍💼 Agent Performance":
 
     sorted_df = grouped.sort_values(by=selected_metric, ascending=ascending).copy()
 
-    # Bar chart — top 5 agents by selected metric
+    # Bar Chart: Top 5
     top5 = sorted_df.head(5)
     fig = px.bar(
         top5,
@@ -394,6 +394,6 @@ elif view_mode == "🧑‍💼 Agent Performance":
     fig.update_layout(yaxis=dict(categoryorder='total ascending' if ascending else 'total descending'))
     st.plotly_chart(fig, use_container_width=True)
 
-    # Data table (fully sortable)
+    # Table — raw values, sortable
     st.markdown("### 📄 Agent Performance Table")
     st.dataframe(sorted_df, use_container_width=True)
