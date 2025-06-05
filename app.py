@@ -37,31 +37,6 @@ def connect_to_google_sheets():
     tmp.flush()
     return pygsheets.authorize(service_account_file=tmp.name)
 
-@st.cache_data(ttl=600)
-def load_agency_access_control():
-    gc = connect_to_google_sheets()
-    sheet = gc.open('Combined Call Sales & Agency Analysis Reports')
-    wks = sheet.worksheet_by_title('Agency Access Control')
-    df = wks.get_as_df()
-    df = df.loc[:, ~df.columns.duplicated(keep='first')]
-    df.columns = df.columns.str.strip().str.lower()
-    df = df.rename(columns={"email": "email", "agencies": "agencies"})
-    df["email"] = df["email"].str.strip().str.lower()
-    return df
-
-def get_user_email():
-    return st.experimental_user.email.lower()
-
-def get_user_agencies(user_email):
-    access_df = load_agency_access_control()
-    row = access_df[access_df["email"] == user_email]
-    if row.empty:
-        return []
-    raw = row.iloc[0]["agencies"]
-    if raw.strip().lower() == "all":
-        return "All"
-    return [a.strip() for a in raw.split(",")]
-
 @st.cache_data(ttl=3600)
 def load_agency_totals():
     gc = connect_to_google_sheets()
@@ -100,6 +75,7 @@ def load_agent_data():
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
     return df
+
 
 def clean_numeric(df, columns):
     for col in columns:
@@ -342,7 +318,7 @@ elif view_mode == "🧑‍💼 Agent Performance":
 
     df_agents = load_agent_data()
     df_agents = df_agents[
-        ~df_agents["Agency"].str.strip().str.lower().isin(["no agency found", "termed ee", "try again"])
+        ~df_agents["Agency"].str.strip().str.lower().isin(["no agency found", "termed ee"])
     ]
     df_agents = clean_numeric(df_agents, [
         "Revenue", "Lead Spend", "Closing Ratio"
@@ -351,7 +327,6 @@ elif view_mode == "🧑‍💼 Agent Performance":
     with st.sidebar:
         st.header("🎯 Agent Filters")
 
-        # Date Range Selection
         date_mode = st.radio("Date Range Mode", ["Last 7 Days", "Last 14 Days", "Last 30 Days", "Last 90 Days", "Custom"])
         if date_mode == "Custom":
             start_date = st.date_input("Start Date", value=datetime.now().date() - timedelta(days=7))
@@ -362,28 +337,17 @@ elif view_mode == "🧑‍💼 Agent Performance":
             cutoff = datetime.now() - timedelta(days=days_back)
             df_agents = df_agents[df_agents["Date"] >= cutoff]
 
-        # Access Control: Determine which agencies the user can see
-        user_email = get_user_email()
-        allowed_agencies = get_user_agencies(user_email)
-        all_agencies = sorted(df_agents["Agency"].dropna().unique())
-        if allowed_agencies == "All":
-            visible_agencies = all_agencies
-        else:
-            visible_agencies = [a for a in all_agencies if a in allowed_agencies]
-
-        # Agency selector limited to allowed_agencies
-        agencies = ["All"] + visible_agencies
+        agencies = ["All"] + sorted(df_agents["Agency"].dropna().unique())
         selected_agency = st.selectbox("Select Agency", agencies)
         if selected_agency != "All":
             df_agents = df_agents[df_agents["Agency"] == selected_agency]
 
-        # Agent selector
         agents = sorted(df_agents["Agent Name"].dropna().unique())
         selected_agents = st.multiselect("Select Agents", agents, default=agents)
         if selected_agents:
             df_agents = df_agents[df_agents["Agent Name"].isin(selected_agents)]
 
-    # Aggregate per agent
+    # SUM Revenue and Lead Spend, then compute Profit and Profitability
     grouped = df_agents.groupby(["Agent Name", "Agency"]).agg({
         "Revenue": "sum",
         "Lead Spend": "sum",
@@ -391,9 +355,9 @@ elif view_mode == "🧑‍💼 Agent Performance":
     }).reset_index()
 
     grouped["Profit"] = grouped["Revenue"] - grouped["Lead Spend"]
-    grouped["Agent Profitability"] = grouped["Profit"]  # Direct assignment to match requested logic
+    grouped["Agent Profitability"] = grouped["Profit"]  # You can change if it's more specific
 
-    # KPI Metrics
+    # KPIs
     total_revenue = grouped["Revenue"].sum()
     total_lead_spend = grouped["Lead Spend"].sum()
     total_profit = grouped["Profit"].sum()
@@ -430,6 +394,6 @@ elif view_mode == "🧑‍💼 Agent Performance":
     fig.update_layout(yaxis=dict(categoryorder='total ascending' if ascending else 'total descending'))
     st.plotly_chart(fig, use_container_width=True)
 
-    # Data Table — sortable
+    # Table — raw values, sortable
     st.markdown("### 📄 Agent Performance Table")
     st.dataframe(sorted_df, use_container_width=True)
