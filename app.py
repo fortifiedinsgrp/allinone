@@ -378,10 +378,9 @@ elif view_mode == "🧑‍💼 Agent Performance":
     sort_order = st.radio("Sort Order", ["Descending", "Ascending"], horizontal=True)
     ascending = sort_order == "Ascending"
 
-    # Sort numerically first
     sorted_df = grouped.sort_values(by=selected_metric, ascending=ascending).copy()
 
-    # Bar Chart: Top 5 agents
+    # Bar chart — top 5 agents by selected metric
     top5 = sorted_df.head(5)
     fig = px.bar(
         top5,
@@ -395,13 +394,6 @@ elif view_mode == "🧑‍💼 Agent Performance":
     fig.update_layout(yaxis=dict(categoryorder='total ascending' if ascending else 'total descending'))
     st.plotly_chart(fig, use_container_width=True)
 
-    # Format then display full table
+    # Data table (fully sortable)
     st.markdown("### 📄 Agent Performance Table")
-    display_df = sorted_df.copy()
-    display_df["Revenue"] = display_df["Revenue"].map("${:,.2f}".format)
-    display_df["Profit"] = display_df["Profit"].map("${:,.2f}".format)
-    display_df["Lead Spend"] = display_df["Lead Spend"].map("${:,.2f}".format)
-    display_df["Agent Profitability"] = display_df["Agent Profitability"].map("${:,.2f}".format)
-    display_df["Closing Ratio"] = display_df["Closing Ratio"].map("{:.2f}%".format)
-
-    st.dataframe(display_df, use_container_width=True)
+    st.dataframe(sorted_df, use_container_width=True)
